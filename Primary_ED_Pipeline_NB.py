@@ -48,7 +48,7 @@ def getListOfFiles(dirName):
                 
     return allFiles
 
-dirName = '/work/76568/preprocessed/no' ## Changed by MCB 22.06.2022
+dirName =  ## Enter firectory to here
 # Get the list of all files in directory tree at given path
 listOfFiles = getListOfFiles(dirName) 
 print(listOfFiles)
