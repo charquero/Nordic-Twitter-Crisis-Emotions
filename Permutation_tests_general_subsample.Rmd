@@ -1,0 +1,2456 @@
+---
+title: "Permutation test - New General Subsample"
+author: "Andreas Hyldegaard Hansen"
+date: "2023-04-08"
+output:
+  pdf_document:
+    highlight: tango
+    toc: true
+    toc_depth: 2
+  word_document: default
+  html_document: default
+documentclass: article
+classoption: a4paper
+---
+
+# Summaries
+
+## Summary for General against Corona
+
+**For the Danish tweets:**
+
+Anger: More anger in the corona data set
+
+Disgust: More disgust in the corona data set
+
+Joy: More joy in the general data set
+
+Optimism: More optimism in the general data set
+
+Sadness: More sadness in the corona data set
+
+Fear: More fear in the corona data set
+
+**For the Finnish tweets:**
+
+Anger: More anger in the general data set
+
+Disgust: More disgust in the general data set
+
+Joy: More joy in the corona data set
+
+Optimism: More optimism in the corona data set
+
+Sadness: Equal sadness
+
+Fear: More fear in the corona data set
+
+**For the Swedish tweets:**
+
+Anger: More anger in the corona data set
+
+Disgust: More disgust in the corona data set
+
+Joy: More joy in the general data set
+
+Optimism: More optimism in the general data set
+
+Sadness: More sadness in the corona data set
+
+Fear: More fear in the corona data set
+
+**For the Norwegian tweets:**
+
+Anger: More anger in the corona data set
+
+Disgust: More disgust in the corona data set
+
+Joy: More joy in the general data set
+
+Optimism: More optimism in the general data set
+
+Sadness: More sadness in the corona data set
+
+Fear: More fear in the corona data set
+
+## Summary for General against Disinformation
+
+**For the Danish tweets:**
+
+Anger: More anger in the disinformation data set
+
+Disgust: More disgust in the disinformation data set
+
+Joy: More joy in the general data set
+
+Optimism: More optimism in the general data set
+
+Sadness: More sadness in the disinformation data set
+
+Fear: More fear in the corona disinformation set
+
+**For the Finnish tweets:**
+
+Anger: More anger in the disinformation data set
+
+Disgust: More disgust in the disinformation data set
+
+Joy: More joy in the general data set
+
+Optimism: More optimism in the general data set
+
+Sadness: More sadness in the disinformation data set
+
+Fear: More fear in the disinformation data set
+
+**For the Swedish tweets:**
+
+Anger: More anger in the disinformation data set
+
+Disgust: More disgust in the disinformation data set
+
+Joy: More joy in the general data set
+
+Optimism: More optimism in the general data set
+
+Sadness: More sadness in the disinformation data set
+
+Fear: More fear in the disinformation data set
+
+**For the Norwegian tweets:**
+
+Anger: More anger in the disinformation data set
+
+Disgust: More disgust in the disinformation data set
+
+Joy: More joy in the general data set
+
+Optimism: More optimism in the general data set
+
+Sadness: More sadness in the disinformation data set
+
+Fear: More fear in the disinformation data set
+
+## Summary for Corona against Disinformation
+
+**For the Danish tweets:**
+
+Anger: More anger in the disinformation data set
+
+Disgust: More disgust in the disinformation data set
+
+Joy: More joy in the corona data set
+
+Optimism: More optimism in the corona data set
+
+Sadness: More sadness in the disinformation data set
+
+Fear: More fear in the corona disinformation set
+
+**For the Finnish tweets:**
+
+Anger: More anger in the disinformation data set
+
+Disgust: More disgust in the disinformation data set
+
+Joy: More joy in the corona data set
+
+Optimism: More optimism in the corona data set
+
+Sadness: More sadness in the disinformation data set
+
+Fear: More fear in the corona disinformation set
+
+**For the Swedish tweets:**
+
+Anger: More anger in the disinformation data set
+
+Disgust: More disgust in the disinformation data set
+
+Joy: More joy in the corona data set
+
+Optimism: More optimism in the corona data set
+
+Sadness: Equal sadness
+
+Fear: More fear in the corona disinformation set
+
+**For the Norwegian tweets:**
+
+Anger: More anger in the disinformation data set
+
+Disgust: More disgust in the disinformation data set
+
+Joy: More joy in the corona data set
+
+Optimism: More optimism in the corona data set
+
+Sadness: Equal sadness
+
+Fear: More fear in the corona disinformation set
+
+# Permutationtest, p-value and effectsize functions
+
+```{r}
+Perm_test <- function(datalist1, datalist2, datalist_total) {
+  set.seed(1)
+  observed <- mean(datalist1) - mean(datalist2)
+
+  total_size <- length(datalist_total)
+  sample_size <- max(length(datalist1), length(datalist2))
+
+  N <- 10^4 - 1
+  result <- numeric(N)
+
+  for (i in 1:N) {
+    index <- sample(total_size, size = sample_size, replace = F)
+    result[i] <- mean(datalist_total[index]) - mean(datalist_total[-index])
+               # mean of picked - mean of not picked
+  }
+  
+  return(c(result, observed))
+}
+```
+
+```{r}
+Two_sided_pval <- function(result, observed) {
+  N <- 10^4 - 1
+  
+  p = 2*min((sum(result >= observed) + 1)/(N + 1),
+            (sum(result <= observed) + 1)/(N + 1))
+  
+  return(p)
+}
+```
+
+```{r}
+Effect_size <- function(datalist1, datalist2, datalist_total) {
+  effectsize = abs((mean(datalist1)-mean(datalist2))/sd(datalist_total))
+  
+  return(effectsize)
+}
+```
+
+# General against Corona
+
+## Danish tweets
+
+```{r}
+DA_vec <- c()
+```
+
+### Anger
+
+```{r message=FALSE, warning=FALSE}
+library(corpus)
+general <- read_ndjson("DATALAB_data/new_general_tweets_da.ndjson")
+corona <- read_ndjson("DATALAB_data/new_corona_tweets_da.ndjson")
+```
+
+```{r}
+data1 <- subset(general, select = anger, drop=T)  #  Change here,
+data2 <- subset(corona, select = anger, drop=T)   #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_General - mean_Corona",
+  main = "Permutation Distribution of Anger",     #  here
+  xlim = c(-0.05, 0.05))                          #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+DA_vec <- append(DA_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+### Disgust
+
+```{r}
+data1 <- subset(general, select = disgust, drop=T)  #  Change here,
+data2 <- subset(corona, select = disgust, drop=T)   #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_General - mean_Corona",
+  main = "Permutation Distribution of Disgust",       #  here,
+  xlim = c(-0.05, 0.05))                              #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+DA_vec <- append(DA_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+### Joy
+
+```{r}
+data1 <- subset(general, select = joy, drop=T)  #  Change here,
+data2 <- subset(corona, select = joy, drop=T)   #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_General - mean_Corona",
+  main = "Permutation Distribution of Joy",       #  here,
+  xlim = c(-0.05, 0.05))                          #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+DA_vec <- append(DA_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+### Optimism
+
+```{r}
+data1 <- subset(general, select = optimism, drop=T)  #  Change here,
+data2 <- subset(corona, select = optimism, drop=T)   #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_General - mean_Corona",
+  main = "Permutation Distribution of Optimism",       #  here,
+  xlim = c(-0.05, 0.05))                               #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+DA_vec <- append(DA_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+### Sadness
+
+```{r}
+data1 <- subset(general, select = sadness, drop=T)  #  Change here,
+data2 <- subset(corona, select = sadness, drop=T)   #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_General - mean_Corona",
+  main = "Permutation Distribution of Sadness",       #  here,
+  xlim = c(-0.05, 0.05))                              #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+DA_vec <- append(DA_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+### Fear
+
+```{r}
+data1 <- subset(general, select = fear, drop=T)  #  Change here,
+data2 <- subset(corona, select = fear, drop=T)   #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_General - mean_Corona",
+  main = "Permutation Distribution of Fear",       #  here,
+  xlim = c(-0.05, 0.05))                           #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+DA_vec <- append(DA_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+## Finnish tweets
+
+```{r}
+FI_vec <- c()
+```
+
+### Anger
+
+```{r message=FALSE, warning=FALSE}
+general <- read_ndjson("DATALAB_data/new_general_tweets_fi.ndjson")
+corona <- read_ndjson("DATALAB_data/new_corona_tweets_fi.ndjson")
+```
+
+```{r}
+data1 <- subset(general, select = anger, drop=T)  #  Change here,
+data2 <- subset(corona, select = anger, drop=T)   #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_General - mean_Corona",
+  main = "Permutation Distribution of Anger",     #  here
+  xlim = c(-0.05, 0.05))                          #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+FI_vec <- append(FI_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+### Disgust
+
+```{r}
+data1 <- subset(general, select = disgust, drop=T)  #  Change here,
+data2 <- subset(corona, select = disgust, drop=T)   #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_General - mean_Corona",
+  main = "Permutation Distribution of Disgust",       #  here,
+  xlim = c(-0.05, 0.05))                              #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+FI_vec <- append(FI_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+### Joy
+
+```{r}
+data1 <- subset(general, select = joy, drop=T)  #  Change here,
+data2 <- subset(corona, select = joy, drop=T)   #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_General - mean_Corona",
+  main = "Permutation Distribution of Joy",       #  here,
+  xlim = c(-0.05, 0.05))                          #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+FI_vec <- append(FI_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+### Optimism
+
+```{r}
+data1 <- subset(general, select = optimism, drop=T)  #  Change here,
+data2 <- subset(corona, select = optimism, drop=T)   #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_General - mean_Corona",
+  main = "Permutation Distribution of Optimism",       #  here,
+  xlim = c(-0.05, 0.05))                               #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+FI_vec <- append(FI_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+### Sadness
+
+```{r}
+data1 <- subset(general, select = sadness, drop=T)  #  Change here,
+data2 <- subset(corona, select = sadness, drop=T)   #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_General - mean_Corona",
+  main = "Permutation Distribution of Sadness",       #  here,
+  xlim = c(-0.05, 0.05))                              #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+FI_vec <- append(FI_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+### Fear
+
+```{r}
+data1 <- subset(general, select = fear, drop=T)  #  Change here,
+data2 <- subset(corona, select = fear, drop=T)   #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_General - mean_Corona",
+  main = "Permutation Distribution of Fear",       #  here,
+  xlim = c(-0.05, 0.05))                           #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+FI_vec <- append(FI_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+## Swedish tweets
+
+```{r}
+SV_vec <- c()
+```
+
+### Anger
+
+```{r message=FALSE, warning=FALSE}
+general <- read_ndjson("DATALAB_data/new_general_tweets_sv.ndjson")
+corona <- read_ndjson("DATALAB_data/new_corona_tweets_sv.ndjson")
+```
+
+```{r}
+data1 <- subset(general, select = anger, drop=T)  #  Change here,
+data2 <- subset(corona, select = anger, drop=T)   #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_General - mean_Corona",
+  main = "Permutation Distribution of Anger",     #  here
+  xlim = c(-0.05, 0.05))                          #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+SV_vec <- append(SV_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+### Disgust
+
+```{r}
+data1 <- subset(general, select = disgust, drop=T)  #  Change here,
+data2 <- subset(corona, select = disgust, drop=T)   #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_General - mean_Corona",
+  main = "Permutation Distribution of Disgust",       #  here,
+  xlim = c(-0.05, 0.05))                              #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+SV_vec <- append(SV_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+### Joy
+
+```{r}
+data1 <- subset(general, select = joy, drop=T)  #  Change here,
+data2 <- subset(corona, select = joy, drop=T)   #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_General - mean_Corona",
+  main = "Permutation Distribution of Joy",       #  here,
+  xlim = c(-0.05, 0.05))                          #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+SV_vec <- append(SV_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+### Optimism
+
+```{r}
+data1 <- subset(general, select = optimism, drop=T)  #  Change here,
+data2 <- subset(corona, select = optimism, drop=T)   #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_General - mean_Corona",
+  main = "Permutation Distribution of Optimism",       #  here,
+  xlim = c(-0.05, 0.05))                               #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+SV_vec <- append(SV_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+### Sadness
+
+```{r}
+data1 <- subset(general, select = sadness, drop=T)  #  Change here,
+data2 <- subset(corona, select = sadness, drop=T)   #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_General - mean_Corona",
+  main = "Permutation Distribution of Sadness",       #  here,
+  xlim = c(-0.05, 0.05))                              #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+SV_vec <- append(SV_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+### Fear
+
+```{r}
+data1 <- subset(general, select = fear, drop=T)  #  Change here,
+data2 <- subset(corona, select = fear, drop=T)   #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_General - mean_Corona",
+  main = "Permutation Distribution of Fear",       #  here,
+  xlim = c(-0.05, 0.05))                           #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+SV_vec <- append(SV_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+## Norwegian tweets
+
+```{r}
+NO_vec <- c()
+```
+
+### Anger
+
+```{r message=FALSE, warning=FALSE}
+general <- read_ndjson("DATALAB_data/new_general_tweets_no.ndjson")
+corona <- read_ndjson("DATALAB_data/new_corona_tweets_no.ndjson")
+```
+
+```{r}
+data1 <- subset(general, select = anger, drop=T)  #  Change here,
+data2 <- subset(corona, select = anger, drop=T)   #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_General - mean_Corona",
+  main = "Permutation Distribution of Anger",     #  here
+  xlim = c(-0.05, 0.05))                          #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+NO_vec <- append(NO_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+### Disgust
+
+```{r}
+data1 <- subset(general, select = disgust, drop=T)  #  Change here,
+data2 <- subset(corona, select = disgust, drop=T)   #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_General - mean_Corona",
+  main = "Permutation Distribution of Disgust",       #  here,
+  xlim = c(-0.05, 0.05))                              #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+NO_vec <- append(NO_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+### Joy
+
+```{r}
+data1 <- subset(general, select = joy, drop=T)  #  Change here,
+data2 <- subset(corona, select = joy, drop=T)   #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_General - mean_Corona",
+  main = "Permutation Distribution of Joy",       #  here,
+  xlim = c(-0.05, 0.05))                          #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+NO_vec <- append(NO_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+### Optimism
+
+```{r}
+data1 <- subset(general, select = optimism, drop=T)  #  Change here,
+data2 <- subset(corona, select = optimism, drop=T)   #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_General - mean_Corona",
+  main = "Permutation Distribution of Optimism",       #  here,
+  xlim = c(-0.05, 0.05))                               #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+NO_vec <- append(NO_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+### Sadness
+
+```{r}
+data1 <- subset(general, select = sadness, drop=T)  #  Change here,
+data2 <- subset(corona, select = sadness, drop=T)   #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_General - mean_Corona",
+  main = "Permutation Distribution of Sadness",       #  here,
+  xlim = c(-0.05, 0.05))                              #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+NO_vec <- append(NO_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+### Fear
+
+```{r}
+data1 <- subset(general, select = fear, drop=T)  #  Change here,
+data2 <- subset(corona, select = fear, drop=T)   #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_General - mean_Corona",
+  main = "Permutation Distribution of Fear",       #  here,
+  xlim = c(-0.05, 0.05))                           #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+NO_vec <- append(NO_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+## Plot means, p-values and effectsize
+
+```{r message=FALSE, warning=FALSE}
+library(gridExtra)
+library(ggplot2)
+df <- data.frame()
+df <- rbind(df, DA_vec[1:6])
+df <- rbind(df, DA_vec[7:12])
+df <- rbind(df, DA_vec[13:18])
+df <- rbind(df, DA_vec[19:24])
+df <- rbind(df, DA_vec[25:30])
+df <- rbind(df, DA_vec[31:36])
+df <- rbind(df, FI_vec[1:6])
+df <- rbind(df, FI_vec[7:12])
+df <- rbind(df, FI_vec[13:18])
+df <- rbind(df, FI_vec[19:24])
+df <- rbind(df, FI_vec[25:30])
+df <- rbind(df, FI_vec[31:36])
+df <- rbind(df, SV_vec[1:6])
+df <- rbind(df, SV_vec[7:12])
+df <- rbind(df, SV_vec[13:18])
+df <- rbind(df, SV_vec[19:24])
+df <- rbind(df, SV_vec[25:30])
+df <- rbind(df, SV_vec[31:36])
+df <- rbind(df, NO_vec[1:6])
+df <- rbind(df, NO_vec[7:12])
+df <- rbind(df, NO_vec[13:18])
+df <- rbind(df, NO_vec[19:24])
+df <- rbind(df, NO_vec[25:30])
+df <- rbind(df, NO_vec[31:36])
+colnames(df) <- c('Mean(General)','Mean(Covid)', 'SD(General)', 'SD(Covid)', 'P-value', 'Standardized Effectsize(Cohen\'s d)')
+df <- cbind('Emotion'=c('Anger', 'Disgust', 'Joy', 'Optimism', 'Sadness', 'Fear', 'Anger', 'Disgust', 'Joy', 'Optimism', 'Sadness', 'Fear', 'Anger', 'Disgust', 'Joy', 'Optimism', 'Sadness', 'Fear', 'Anger', 'Disgust', 'Joy', 'Optimism', 'Sadness', 'Fear'), df)
+df <- cbind('Country'=c('DA', 'DA', 'DA', 'DA', 'DA', 'DA', 'FI', 'FI', 'FI', 'FI', 'FI', 'FI', 'SV', 'SV', 'SV', 'SV', 'SV', 'SV', 'NO', 'NO', 'NO', 'NO', 'NO', 'NO'), df)
+is.num <- sapply(df, is.numeric)
+df[is.num] <- lapply(df[is.num], round, 6)
+```
+
+```{r}
+mytheme <- gridExtra::ttheme_default(
+    core = list(fg_params=list(cex = 0.5)),
+    colhead = list(fg_params=list(cex = 0.5)),
+    rowhead = list(fg_params=list(cex = 0.5)),
+    padding=unit(c(2.5,2.5), "mm"))
+
+grid.arrange(tableGrob(df, theme=mytheme))
+```
+
+# General against Disinformation
+
+## Danish tweets
+
+```{r}
+DA_vec <- c()
+```
+
+### Anger
+
+```{r message=FALSE, warning=FALSE}
+general <- read_ndjson("DATALAB_data/new_general_tweets_da.ndjson")
+disinfo <- read_ndjson("DATALAB_data/disinformation_tweets_da.ndjson")
+```
+
+```{r}
+data1 <- subset(general, select = anger, drop=T)  #  Change here,
+data2 <- subset(disinfo, select = anger, drop=T)  #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_General - mean_Disinformation",
+  main = "Permutation Distribution of Anger",     #  here
+  xlim = c(-0.25, 0.25))                          #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+DA_vec <- append(DA_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+### Disgust
+
+```{r}
+data1 <- subset(general, select = disgust, drop=T)  #  Change here,
+data2 <- subset(disinfo, select = disgust, drop=T)  #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_General - mean_Disinformation",
+  main = "Permutation Distribution of Disgust",     #  here,
+  xlim = c(-0.25, 0.25))                            #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+DA_vec <- append(DA_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+### Joy
+
+```{r}
+data1 <- subset(general, select = joy, drop=T)  #  Change here,
+data2 <- subset(disinfo, select = joy, drop=T)  #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_General - mean_Disinformation",
+  main = "Permutation Distribution of Joy",     #  here,
+  xlim = c(-0.25, 0.25))                        #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+DA_vec <- append(DA_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+### Optimism
+
+```{r}
+data1 <- subset(general, select = optimism, drop=T)  #  Change here,
+data2 <- subset(disinfo, select = optimism, drop=T)  #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_General - mean_Disinformation",
+  main = "Permutation Distribution of Optimism",     #  here,
+  xlim = c(-0.25, 0.25))                             #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+DA_vec <- append(DA_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+### Sadness
+
+```{r}
+data1 <- subset(general, select = sadness, drop=T)  #  Change here,
+data2 <- subset(disinfo, select = sadness, drop=T)  #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_General - mean_Disinformation",
+  main = "Permutation Distribution of Sadness",     #  here,
+  xlim = c(-0.25, 0.25))                            #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+DA_vec <- append(DA_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+### Fear
+
+```{r}
+data1 <- subset(general, select = fear, drop=T)  #  Change here,
+data2 <- subset(disinfo, select = fear, drop=T)  #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_General - mean_Disinformation",
+  main = "Permutation Distribution of Fear",     #  here,
+  xlim = c(-0.25, 0.25))                         #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+DA_vec <- append(DA_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+## Finnish tweets
+
+```{r}
+FI_vec <- c()
+```
+
+### Anger
+
+```{r message=FALSE, warning=FALSE}
+general <- read_ndjson("DATALAB_data/new_general_tweets_fi.ndjson")
+disinfo <- read_ndjson("DATALAB_data/disinformation_tweets_fi.ndjson")
+```
+
+```{r}
+data1 <- subset(general, select = anger, drop=T)  #  Change here,
+data2 <- subset(disinfo, select = anger, drop=T)  #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_General - mean_Disinformation",
+  main = "Permutation Distribution of Anger",     #  here
+  xlim = c(-0.25, 0.25))                          #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+FI_vec <- append(FI_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+### Disgust
+
+```{r}
+data1 <- subset(general, select = disgust, drop=T)  #  Change here,
+data2 <- subset(disinfo, select = disgust, drop=T)  #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_General - mean_Disinformation",
+  main = "Permutation Distribution of Disgust",     #  here,
+  xlim = c(-0.25, 0.25))                            #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+FI_vec <- append(FI_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+### Joy
+
+```{r}
+data1 <- subset(general, select = joy, drop=T)  #  Change here,
+data2 <- subset(disinfo, select = joy, drop=T)  #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_General - Disinformation",
+  main = "Permutation Distribution of Joy",     #  here,
+  xlim = c(-0.25, 0.25))                        #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+FI_vec <- append(FI_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+### Optimism
+
+```{r}
+data1 <- subset(general, select = optimism, drop=T)  #  Change here,
+data2 <- subset(disinfo, select = optimism, drop=T)  #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_General - mean_Disinformation",
+  main = "Permutation Distribution of Optimism",     #  here,
+  xlim = c(-0.25, 0.25))                             #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+FI_vec <- append(FI_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+### Sadness
+
+```{r}
+data1 <- subset(general, select = sadness, drop=T)  #  Change here,
+data2 <- subset(disinfo, select = sadness, drop=T)  #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_General - mean_Disinformation",
+  main = "Permutation Distribution of Sadness",     #  here,
+  xlim = c(-0.25, 0.25))                            #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+FI_vec <- append(FI_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+### Fear
+
+```{r}
+data1 <- subset(general, select = fear, drop=T)  #  Change here,
+data2 <- subset(disinfo, select = fear, drop=T)  #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_General - mean_Disinformation",
+  main = "Permutation Distribution of Fear",     #  here,
+  xlim = c(-0.25, 0.25))                         #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+FI_vec <- append(FI_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+## Swedish tweets
+
+```{r}
+SV_vec <- c()
+```
+
+### Anger
+
+```{r message=FALSE, warning=FALSE}
+general <- read_ndjson("DATALAB_data/new_general_tweets_sv.ndjson")
+disinfo <- read_ndjson("DATALAB_data/disinformation_tweets_sv.ndjson")
+```
+
+```{r}
+data1 <- subset(general, select = anger, drop=T)  #  Change here,
+data2 <- subset(disinfo, select = anger, drop=T)  #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_General - mean_Disinformation",
+  main = "Permutation Distribution of Anger",     #  here
+  xlim = c(-0.25, 0.25))                          #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+SV_vec <- append(SV_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+### Disgust
+
+```{r}
+data1 <- subset(general, select = disgust, drop=T)  #  Change here,
+data2 <- subset(disinfo, select = disgust, drop=T)  #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_General - mean_Disinformation",
+  main = "Permutation Distribution of Disgust",     #  here,
+  xlim = c(-0.25, 0.25))                            #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+SV_vec <- append(SV_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+### Joy
+
+```{r}
+data1 <- subset(general, select = joy, drop=T)  #  Change here,
+data2 <- subset(disinfo, select = joy, drop=T)  #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_General - mean_Disinformation",
+  main = "Permutation Distribution of Joy",     #  here,
+  xlim = c(-0.25, 0.25))                        #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+SV_vec <- append(SV_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+### Optimism
+
+```{r}
+data1 <- subset(general, select = optimism, drop=T)  #  Change here,
+data2 <- subset(disinfo, select = optimism, drop=T)  #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_General - mean_Disinformation",
+  main = "Permutation Distribution of Optimism",     #  here,
+  xlim = c(-0.25, 0.25))                             #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+SV_vec <- append(SV_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+### Sadness
+
+```{r}
+data1 <- subset(general, select = sadness, drop=T)  #  Change here,
+data2 <- subset(disinfo, select = sadness, drop=T)  #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_General - mean_Disinformation",
+  main = "Permutation Distribution of Sadness",     #  here,
+  xlim = c(-0.25, 0.25))                            #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+SV_vec <- append(SV_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+### Fear
+
+```{r}
+data1 <- subset(general, select = fear, drop=T)  #  Change here,
+data2 <- subset(disinfo, select = fear, drop=T)  #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_General - mean_Disinformation",
+  main = "Permutation Distribution of Fear",     #  here,
+  xlim = c(-0.25, 0.25))                         #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+SV_vec <- append(SV_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+## Norwegian tweets
+
+```{r}
+NO_vec <- c()
+```
+
+### Anger
+
+```{r message=FALSE, warning=FALSE}
+general <- read_ndjson("DATALAB_data/new_general_tweets_no.ndjson")
+disinfo <- read_ndjson("DATALAB_data/disinformation_tweets_no.ndjson")
+```
+
+```{r}
+data1 <- subset(general, select = anger, drop=T)  #  Change here,
+data2 <- subset(disinfo, select = anger, drop=T)  #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_General - mean_Disinformation",
+  main = "Permutation Distribution of Anger",     #  here
+  xlim = c(-0.25, 0.25))                          #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+NO_vec <- append(NO_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+### Disgust
+
+```{r}
+data1 <- subset(general, select = disgust, drop=T)  #  Change here,
+data2 <- subset(disinfo, select = disgust, drop=T)  #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_General - mean_Disinformation",
+  main = "Permutation Distribution of Disgust",     #  here,
+  xlim = c(-0.25, 0.25))                            #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+NO_vec <- append(NO_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+### Joy
+
+```{r}
+data1 <- subset(general, select = joy, drop=T)  #  Change here,
+data2 <- subset(disinfo, select = joy, drop=T)  #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_General - mean_Disinformation",
+  main = "Permutation Distribution of Joy",     #  here,
+  xlim = c(-0.25, 0.25))                        #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+NO_vec <- append(NO_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+### Optimism
+
+```{r}
+data1 <- subset(general, select = optimism, drop=T)  #  Change here,
+data2 <- subset(disinfo, select = optimism, drop=T)  #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_General - mean_Disinformation",
+  main = "Permutation Distribution of Optimism",     #  here,
+  xlim = c(-0.25, 0.25))                             #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+NO_vec <- append(NO_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+### Sadness
+
+```{r}
+data1 <- subset(general, select = sadness, drop=T)  #  Change here,
+data2 <- subset(disinfo, select = sadness, drop=T)  #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_General - mean_Disinformation",
+  main = "Permutation Distribution of Sadness",     #  here,
+  xlim = c(-0.25, 0.25))                            #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+NO_vec <- append(NO_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+### Fear
+
+```{r}
+data1 <- subset(general, select = fear, drop=T)  #  Change here,
+data2 <- subset(disinfo, select = fear, drop=T)  #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_General - mean_Disinformation",
+  main = "Permutation Distribution of Fear",     #  here,
+  xlim = c(-0.25, 0.25))                         #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+NO_vec <- append(NO_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+## Plot means, p-values and effectsize
+
+```{r message=FALSE, warning=FALSE}
+library(gridExtra)
+library(ggplot2)
+df <- data.frame()
+df <- rbind(df, DA_vec[1:6])
+df <- rbind(df, DA_vec[7:12])
+df <- rbind(df, DA_vec[13:18])
+df <- rbind(df, DA_vec[19:24])
+df <- rbind(df, DA_vec[25:30])
+df <- rbind(df, DA_vec[31:36])
+df <- rbind(df, FI_vec[1:6])
+df <- rbind(df, FI_vec[7:12])
+df <- rbind(df, FI_vec[13:18])
+df <- rbind(df, FI_vec[19:24])
+df <- rbind(df, FI_vec[25:30])
+df <- rbind(df, FI_vec[31:36])
+df <- rbind(df, SV_vec[1:6])
+df <- rbind(df, SV_vec[7:12])
+df <- rbind(df, SV_vec[13:18])
+df <- rbind(df, SV_vec[19:24])
+df <- rbind(df, SV_vec[25:30])
+df <- rbind(df, SV_vec[31:36])
+df <- rbind(df, NO_vec[1:6])
+df <- rbind(df, NO_vec[7:12])
+df <- rbind(df, NO_vec[13:18])
+df <- rbind(df, NO_vec[19:24])
+df <- rbind(df, NO_vec[25:30])
+df <- rbind(df, NO_vec[31:36])
+colnames(df) <- c('Mean(General)','Mean(Disinformation)', 'SD(General)', 'SD(Disinformation)', 'P-value', 'Standardized Effectsize(Cohen\'s d)')
+df <- cbind('Emotion'=c('Anger', 'Disgust', 'Joy', 'Optimism', 'Sadness', 'Fear', 'Anger', 'Disgust', 'Joy', 'Optimism', 'Sadness', 'Fear', 'Anger', 'Disgust', 'Joy', 'Optimism', 'Sadness', 'Fear', 'Anger', 'Disgust', 'Joy', 'Optimism', 'Sadness', 'Fear'), df)
+df <- cbind('Country'=c('DA', 'DA', 'DA', 'DA', 'DA', 'DA', 'FI', 'FI', 'FI', 'FI', 'FI', 'FI', 'SV', 'SV', 'SV', 'SV', 'SV', 'SV', 'NO', 'NO', 'NO', 'NO', 'NO', 'NO'), df)
+is.num <- sapply(df, is.numeric)
+df[is.num] <- lapply(df[is.num], round, 6)
+```
+
+```{r}
+mytheme <- gridExtra::ttheme_default(
+    core = list(fg_params=list(cex = 0.5)),
+    colhead = list(fg_params=list(cex = 0.5)),
+    rowhead = list(fg_params=list(cex = 0.5)),
+    padding=unit(c(2.5,2.5), "mm"))
+
+grid.arrange(tableGrob(df, theme=mytheme))
+```
+
+# Corona against Disinformation
+
+## Danish tweets
+
+```{r}
+DA_vec <- c()
+```
+
+### Anger
+
+```{r message=FALSE, warning=FALSE}
+corona <- read_ndjson("DATALAB_data/new_corona_tweets_da.ndjson")
+disinfo <- read_ndjson("DATALAB_data/disinformation_tweets_da.ndjson")
+```
+
+```{r}
+data1 <- subset(corona, select = anger, drop=T)   #  Change here,
+data2 <- subset(disinfo, select = anger, drop=T)  #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_Corona - mean_Disinformation",
+  main = "Permutation Distribution of Anger",     #  here
+  xlim = c(-0.25, 0.25))                          #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+DA_vec <- append(DA_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+### Disgust
+
+```{r}
+data1 <- subset(corona, select = disgust, drop=T)   #  Change here,
+data2 <- subset(disinfo, select = disgust, drop=T)  #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_Corona - mean_Disinformation",
+  main = "Permutation Distribution of Disgust",     #  here,
+  xlim = c(-0.25, 0.25))                            #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+DA_vec <- append(DA_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+### Joy
+
+```{r}
+data1 <- subset(corona, select = joy, drop=T)   #  Change here,
+data2 <- subset(disinfo, select = joy, drop=T)  #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_Corona - mean_Disinformation",
+  main = "Permutation Distribution of Joy",     #  here,
+  xlim = c(-0.25, 0.25))                        #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+DA_vec <- append(DA_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+### Optimism
+
+```{r}
+data1 <- subset(corona, select = optimism, drop=T)   #  Change here,
+data2 <- subset(disinfo, select = optimism, drop=T)  #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_Corona - mean_Disinformation",
+  main = "Permutation Distribution of Optimism",     #  here,
+  xlim = c(-0.25, 0.25))                             #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+DA_vec <- append(DA_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+### Sadness
+
+```{r}
+data1 <- subset(corona, select = sadness, drop=T)   #  Change here,
+data2 <- subset(disinfo, select = sadness, drop=T)  #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_Corona - mean_Disinformation",
+  main = "Permutation Distribution of Sadness",     #  here,
+  xlim = c(-0.25, 0.25))                            #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+DA_vec <- append(DA_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+### Fear
+
+```{r}
+data1 <- subset(corona, select = fear, drop=T)   #  Change here,
+data2 <- subset(disinfo, select = fear, drop=T)  #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_Corona - mean_Disinformation",
+  main = "Permutation Distribution of Fear",     #  here,
+  xlim = c(-0.25, 0.25))                         #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+DA_vec <- append(DA_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+## Finnish tweets
+
+```{r}
+FI_vec <- c()
+```
+
+### Anger
+
+```{r message=FALSE, warning=FALSE}
+corona <- read_ndjson("DATALAB_data/new_corona_tweets_fi.ndjson")
+disinfo <- read_ndjson("DATALAB_data/disinformation_tweets_fi.ndjson")
+```
+
+```{r}
+data1 <- subset(corona, select = anger, drop=T)   #  Change here,
+data2 <- subset(disinfo, select = anger, drop=T)  #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_Corona - mean_Disinformation",
+  main = "Permutation Distribution of Anger",     #  here
+  xlim = c(-0.25, 0.25))                          #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+FI_vec <- append(FI_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+### Disgust
+
+```{r}
+data1 <- subset(corona, select = disgust, drop=T)   #  Change here,
+data2 <- subset(disinfo, select = disgust, drop=T)  #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_Corona - mean_Disinformation",
+  main = "Permutation Distribution of Disgust",     #  here,
+  xlim = c(-0.25, 0.25))                            #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+FI_vec <- append(FI_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+### Joy
+
+```{r}
+data1 <- subset(corona, select = joy, drop=T)   #  Change here,
+data2 <- subset(disinfo, select = joy, drop=T)  #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_Corona - Disinformation",
+  main = "Permutation Distribution of Joy",     #  here,
+  xlim = c(-0.25, 0.25))                        #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+FI_vec <- append(FI_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+### Optimism
+
+```{r}
+data1 <- subset(corona, select = optimism, drop=T)   #  Change here,
+data2 <- subset(disinfo, select = optimism, drop=T)  #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_Corona - mean_Disinformation",
+  main = "Permutation Distribution of Optimism",     #  here,
+  xlim = c(-0.25, 0.25))                             #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+FI_vec <- append(FI_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+### Sadness
+
+```{r}
+data1 <- subset(corona, select = sadness, drop=T)   #  Change here,
+data2 <- subset(disinfo, select = sadness, drop=T)  #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_Corona - mean_Disinformation",
+  main = "Permutation Distribution of Sadness",     #  here,
+  xlim = c(-0.25, 0.25))                            #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+FI_vec <- append(FI_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+### Fear
+
+```{r}
+data1 <- subset(corona, select = fear, drop=T)   #  Change here,
+data2 <- subset(disinfo, select = fear, drop=T)  #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_Corona - mean_Disinformation",
+  main = "Permutation Distribution of Fear",     #  here,
+  xlim = c(-0.25, 0.25))                         #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+FI_vec <- append(FI_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+## Swedish tweets
+
+```{r}
+SV_vec <- c()
+```
+
+### Anger
+
+```{r message=FALSE, warning=FALSE}
+corona <- read_ndjson("DATALAB_data/new_corona_tweets_sv.ndjson")
+disinfo <- read_ndjson("DATALAB_data/disinformation_tweets_sv.ndjson")
+```
+
+```{r}
+data1 <- subset(corona, select = anger, drop=T)   #  Change here,
+data2 <- subset(disinfo, select = anger, drop=T)  #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_Corona - mean_Disinformation",
+  main = "Permutation Distribution of Anger",     #  here
+  xlim = c(-0.25, 0.25))                          #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+SV_vec <- append(SV_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+### Disgust
+
+```{r}
+data1 <- subset(corona, select = disgust, drop=T)   #  Change here,
+data2 <- subset(disinfo, select = disgust, drop=T)  #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_Corona - mean_Disinformation",
+  main = "Permutation Distribution of Disgust",     #  here,
+  xlim = c(-0.25, 0.25))                            #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+SV_vec <- append(SV_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+### Joy
+
+```{r}
+data1 <- subset(corona, select = joy, drop=T)   #  Change here,
+data2 <- subset(disinfo, select = joy, drop=T)  #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_Corona - mean_Disinformation",
+  main = "Permutation Distribution of Joy",     #  here,
+  xlim = c(-0.25, 0.25))                        #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+SV_vec <- append(SV_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+### Optimism
+
+```{r}
+data1 <- subset(corona, select = optimism, drop=T)   #  Change here,
+data2 <- subset(disinfo, select = optimism, drop=T)  #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_Corona - mean_Disinformation",
+  main = "Permutation Distribution of Optimism",     #  here,
+  xlim = c(-0.25, 0.25))                             #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+SV_vec <- append(SV_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+### Sadness
+
+```{r}
+data1 <- subset(corona, select = sadness, drop=T)   #  Change here,
+data2 <- subset(disinfo, select = sadness, drop=T)  #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_Corona - mean_Disinformation",
+  main = "Permutation Distribution of Sadness",     #  here,
+  xlim = c(-0.25, 0.25))                            #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+SV_vec <- append(SV_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+### Fear
+
+```{r}
+data1 <- subset(corona, select = fear, drop=T)   #  Change here,
+data2 <- subset(disinfo, select = fear, drop=T)  #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_Corona - mean_Disinformation",
+  main = "Permutation Distribution of Fear",     #  here,
+  xlim = c(-0.25, 0.25))                         #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+SV_vec <- append(SV_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+## Norwegian tweets
+
+```{r}
+NO_vec <- c()
+```
+
+### Anger
+
+```{r message=FALSE, warning=FALSE}
+corona <- read_ndjson("DATALAB_data/new_corona_tweets_no.ndjson")
+disinfo <- read_ndjson("DATALAB_data/disinformation_tweets_no.ndjson")
+```
+
+```{r}
+data1 <- subset(corona, select = anger, drop=T)   #  Change here,
+data2 <- subset(disinfo, select = anger, drop=T)  #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_Corona - mean_Disinformation",
+  main = "Permutation Distribution of Anger",     #  here
+  xlim = c(-0.25, 0.25))                          #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+NO_vec <- append(NO_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+### Disgust
+
+```{r}
+data1 <- subset(corona, select = disgust, drop=T)   #  Change here,
+data2 <- subset(disinfo, select = disgust, drop=T)  #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_Corona - mean_Disinformation",
+  main = "Permutation Distribution of Disgust",     #  here,
+  xlim = c(-0.25, 0.25))                            #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+NO_vec <- append(NO_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+### Joy
+
+```{r}
+data1 <- subset(corona, select = joy, drop=T)  #  Change here,
+data2 <- subset(disinfo, select = joy, drop=T)  #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_Corona - mean_Disinformation",
+  main = "Permutation Distribution of Joy",     #  here,
+  xlim = c(-0.25, 0.25))                        #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+NO_vec <- append(NO_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+### Optimism
+
+```{r}
+data1 <- subset(corona, select = optimism, drop=T)  #  Change here,
+data2 <- subset(disinfo, select = optimism, drop=T)  #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_Corona - mean_Disinformation",
+  main = "Permutation Distribution of Optimism",     #  here,
+  xlim = c(-0.25, 0.25))                             #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+NO_vec <- append(NO_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+### Sadness
+
+```{r}
+data1 <- subset(corona, select = sadness, drop=T)  #  Change here,
+data2 <- subset(disinfo, select = sadness, drop=T)  #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_Corona - mean_Disinformation",
+  main = "Permutation Distribution of Sadness",     #  here,
+  xlim = c(-0.25, 0.25))                            #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+NO_vec <- append(NO_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+### Fear
+
+```{r}
+data1 <- subset(corona, select = fear, drop=T)  #  Change here,
+data2 <- subset(disinfo, select = fear, drop=T)  #  here,
+data_total <- c(data1, data2)
+```
+
+```{r}
+res_obs <- Perm_test(data1, data2, data_total)
+
+hist(res_obs[-10000],
+  xlab = "mean_Corona - mean_Disinformation",
+  main = "Permutation Distribution of Fear",     #  here,
+  xlim = c(-0.25, 0.25))                         #  and here
+abline(v = res_obs[10000], col = "red")
+```
+
+```{r}
+p <- Two_sided_pval(res_obs[-10000], res_obs[10000])
+effectsize <- Effect_size(data1, data2, data_total)
+```
+
+```{r}
+NO_vec <- append(NO_vec, c(mean(data1), mean(data2), sd(data1), sd(data2), p, effectsize))
+```
+
+## Plot means, p-values and effectsize
+
+```{r message=FALSE, warning=FALSE}
+library(gridExtra)
+library(ggplot2)
+df <- data.frame()
+df <- rbind(df, DA_vec[1:6])
+df <- rbind(df, DA_vec[7:12])
+df <- rbind(df, DA_vec[13:18])
+df <- rbind(df, DA_vec[19:24])
+df <- rbind(df, DA_vec[25:30])
+df <- rbind(df, DA_vec[31:36])
+df <- rbind(df, FI_vec[1:6])
+df <- rbind(df, FI_vec[7:12])
+df <- rbind(df, FI_vec[13:18])
+df <- rbind(df, FI_vec[19:24])
+df <- rbind(df, FI_vec[25:30])
+df <- rbind(df, FI_vec[31:36])
+df <- rbind(df, SV_vec[1:6])
+df <- rbind(df, SV_vec[7:12])
+df <- rbind(df, SV_vec[13:18])
+df <- rbind(df, SV_vec[19:24])
+df <- rbind(df, SV_vec[25:30])
+df <- rbind(df, SV_vec[31:36])
+df <- rbind(df, NO_vec[1:6])
+df <- rbind(df, NO_vec[7:12])
+df <- rbind(df, NO_vec[13:18])
+df <- rbind(df, NO_vec[19:24])
+df <- rbind(df, NO_vec[25:30])
+df <- rbind(df, NO_vec[31:36])
+colnames(df) <- c('Mean(Covid)','Mean(Disinformation)', 'SD(Covid)', 'SD(Disinformation)', 'P-value', 'Standardized Effectsize(Cohen\'s d)')
+df <- cbind('Emotion'=c('Anger', 'Disgust', 'Joy', 'Optimism', 'Sadness', 'Fear', 'Anger', 'Disgust', 'Joy', 'Optimism', 'Sadness', 'Fear', 'Anger', 'Disgust', 'Joy', 'Optimism', 'Sadness', 'Fear', 'Anger', 'Disgust', 'Joy', 'Optimism', 'Sadness', 'Fear'), df)
+df <- cbind('Country'=c('DA', 'DA', 'DA', 'DA', 'DA', 'DA', 'FI', 'FI', 'FI', 'FI', 'FI', 'FI', 'SV', 'SV', 'SV', 'SV', 'SV', 'SV', 'NO', 'NO', 'NO', 'NO', 'NO', 'NO'), df)
+is.num <- sapply(df, is.numeric)
+df[is.num] <- lapply(df[is.num], round, 6)
+```
+
+```{r}
+mytheme <- gridExtra::ttheme_default(
+    core = list(fg_params=list(cex = 0.5)),
+    colhead = list(fg_params=list(cex = 0.5)),
+    rowhead = list(fg_params=list(cex = 0.5)),
+    padding=unit(c(2.5,2.5), "mm"))
+
+grid.arrange(tableGrob(df, theme=mytheme))
+```
